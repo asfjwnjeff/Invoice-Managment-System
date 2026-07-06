@@ -22,6 +22,7 @@ import {
   dashboardMetrics,
   dashboardTasks,
   getActiveGroup,
+  getDetailActions,
   getSearchActions,
   getToolbarActions,
   navGroups,
@@ -199,7 +200,7 @@ function Dashboard({ eventLog }: { eventLog: string[] }) {
       <section className="panel large-panel">
         <PanelTitle title="端到端业务闭环" subtitle="收入、成本、代垫、应收、链票、档案" />
         <div className="process-line">
-          {["账单/业务单", "开票申请", "链票开具", "发票台账", "应收销账", "归档报表"].map((step, index) => (
+          {["账单/业务单", "开票申请", "链票开具", "发票台账", "应收回款", "归档报表"].map((step, index) => (
             <div className="process-node" key={step}>
               <span>{index + 1}</span>
               <strong>{step}</strong>
@@ -355,6 +356,7 @@ function DetailDrawer({
 }) {
   if (!open || !row) return null;
   const rowEntries = Object.entries(row).slice(0, 10);
+  const detailActions = getDetailActions(config);
   return (
     <aside className="drawer" aria-label="详情抽屉">
       <div className="drawer-header">
@@ -367,18 +369,17 @@ function DetailDrawer({
         </button>
       </div>
       <div className="drawer-actions">
-        <button className="btn primary" type="button" onClick={() => onRunAction("提交链票开具")}>
-          <PlugZap size={15} aria-hidden="true" />
-          提交链票开具
-        </button>
-        <button className="btn" type="button" onClick={() => onRunAction("发起红冲申请")}>
-          <FileMinus2 size={15} aria-hidden="true" />
-          发起红冲申请
-        </button>
-        <button className="btn danger" type="button" onClick={() => onRunAction("作废条件校验")}>
-          <ShieldAlert size={15} aria-hidden="true" />
-          作废条件校验
-        </button>
+        {detailActions.map((action, index) => (
+          <button
+            className={getDetailActionClass(action, index)}
+            key={action}
+            type="button"
+            onClick={() => onRunAction(action)}
+          >
+            {getActionIcon(action)}
+            {action}
+          </button>
+        ))}
       </div>
       <section className="drawer-section">
         <h3>基础信息</h3>
@@ -456,6 +457,18 @@ function StatusBadge({ value }: { value: string }) {
 
 function isStatusColumn(column: string) {
   return column.includes("状态") || column.includes("等级") || column.includes("流程");
+}
+
+function getDetailActionClass(action: string, index: number) {
+  if (action.includes("作废") || action.includes("坏账") || action.includes("冻结")) return "btn danger";
+  return index === 0 ? "btn primary" : "btn";
+}
+
+function getActionIcon(action: string) {
+  if (action.includes("链票") || action.includes("接口") || action.includes("同步")) return <PlugZap size={15} aria-hidden="true" />;
+  if (action.includes("红冲") || action.includes("冲回") || action.includes("坏账") || action.includes("减免")) return <FileMinus2 size={15} aria-hidden="true" />;
+  if (action.includes("风险") || action.includes("作废") || action.includes("校验") || action.includes("异常") || action.includes("冻结")) return <ShieldAlert size={15} aria-hidden="true" />;
+  return <FileText size={15} aria-hidden="true" />;
 }
 
 function getPlaceholder(label: string) {
