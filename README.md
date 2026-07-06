@@ -57,6 +57,14 @@ npm run build
 
 Next.js 已配置 `output: "export"`，构建后会生成静态站点。
 
+如果在 Render 上误建成 Web Service，Start Command 可使用：
+
+```bash
+npm run start
+```
+
+该命令会通过 `serve` 托管 `out` 目录，并自动读取 Render 注入的 `PORT`。
+
 ## 后续接入方向
 
 - 用真实后端替换当前 mock 数据。
