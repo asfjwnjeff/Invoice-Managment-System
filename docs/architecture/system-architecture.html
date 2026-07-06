@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>半导体供应链发票业财一体系统架构图</title>
+    <style>
+      :root {
+        --bg: #eef3f7;
+        --panel: #ffffff;
+        --line: #cdd8e2;
+        --text: #1f2d3a;
+        --muted: #647684;
+        --blue: #247fb6;
+        --cyan: #19a0b7;
+        --green: #23835d;
+        --amber: #b46a13;
+        --red: #b24646;
+        --slate: #405568;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-width: 1280px;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      }
+
+      .page {
+        padding: 24px;
+      }
+
+      .header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 18px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 28px;
+        letter-spacing: 0;
+      }
+
+      .subtitle {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .legend {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 9px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        border-radius: 4px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+
+      .blue { background: var(--blue); }
+      .cyan { background: var(--cyan); }
+      .green { background: var(--green); }
+      .amber { background: var(--amber); }
+      .red { background: var(--red); }
+      .slate { background: var(--slate); }
+
+      .canvas {
+        position: relative;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1.1fr 1fr;
+        gap: 14px;
+      }
+
+      .layer {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-top: 4px solid var(--blue);
+        min-height: 132px;
+        padding: 14px;
+        box-shadow: 0 8px 24px rgba(31, 55, 76, 0.08);
+      }
+
+      .layer h2 {
+        margin: 0 0 12px;
+        font-size: 16px;
+      }
+
+      .layer small {
+        display: block;
+        color: var(--muted);
+        margin-top: -6px;
+        margin-bottom: 10px;
+      }
+
+      .span-2 {
+        grid-column: span 2;
+      }
+
+      .span-4 {
+        grid-column: 1 / -1;
+      }
+
+      .app-grid,
+      .service-grid,
+      .data-grid,
+      .external-grid,
+      .flow-grid {
+        display: grid;
+        gap: 10px;
+      }
+
+      .app-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .service-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .data-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .external-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+
+      .flow-grid {
+        grid-template-columns: repeat(9, minmax(0, 1fr));
+        align-items: stretch;
+      }
+
+      .box {
+        min-height: 58px;
+        border: 1px solid var(--line);
+        background: #f9fbfd;
+        padding: 10px;
+        border-left: 4px solid var(--slate);
+        border-radius: 4px;
+      }
+
+      .box strong {
+        display: block;
+        font-size: 13px;
+        margin-bottom: 5px;
+      }
+
+      .box span {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .box.front { border-left-color: var(--blue); }
+      .box.biz { border-left-color: var(--cyan); }
+      .box.domain { border-left-color: var(--green); }
+      .box.integration { border-left-color: var(--amber); }
+      .box.data { border-left-color: var(--slate); }
+      .box.risk { border-left-color: var(--red); }
+
+      .flow {
+        position: relative;
+        text-align: center;
+        min-height: 84px;
+        display: grid;
+        align-content: center;
+      }
+
+      .flow:not(:last-child)::after {
+        content: "";
+        position: absolute;
+        right: -12px;
+        top: 50%;
+        width: 14px;
+        height: 2px;
+        background: #8ba1b1;
+      }
+
+      .flow:not(:last-child)::before {
+        content: "";
+        position: absolute;
+        right: -14px;
+        top: calc(50% - 4px);
+        border-left: 8px solid #8ba1b1;
+        border-top: 5px solid transparent;
+        border-bottom: 5px solid transparent;
+      }
+
+      .section-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        min-height: 22px;
+        padding: 0 8px;
+        border-radius: 999px;
+        background: #e9f3f8;
+        color: var(--blue);
+        font-size: 12px;
+      }
+
+      .note {
+        margin-top: 14px;
+        padding: 12px 14px;
+        border: 1px dashed var(--line);
+        background: #fbfcfe;
+        color: var(--muted);
+        line-height: 1.65;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="header">
+        <div>
+          <h1>半导体供应链发票业财一体系统架构图</h1>
+          <div class="subtitle">覆盖关务、运输、仓储、代垫、客户结算、供应商结算、应收与回款、税务合规与链票集成</div>
+        </div>
+        <div class="legend" aria-label="图例">
+          <span><i class="dot blue"></i>展示层</span>
+          <span><i class="dot cyan"></i>业务应用层</span>
+          <span><i class="dot green"></i>领域服务层</span>
+          <span><i class="dot amber"></i>集成适配层</span>
+          <span><i class="dot slate"></i>数据层</span>
+          <span><i class="dot red"></i>风险与审计</span>
+        </div>
+      </header>
+
+      <section class="canvas">
+        <section class="layer span-4">
+          <div class="section-title">
+            <div>
+              <h2>端到端业务链路</h2>
+              <small>一条半导体进口/运输/仓储业务从委托到发票、回款、成本和归档的闭环</small>
+            </div>
+            <span class="tag">Business Flow</span>
+          </div>
+          <div class="flow-grid">
+            <div class="box flow biz"><strong>业务委托</strong><span>客户 PO、项目、服务类型</span></div>
+            <div class="box flow biz"><strong>关务/运输/仓储</strong><span>报关单、运单、仓单</span></div>
+            <div class="box flow biz"><strong>收入结算</strong><span>服务费、代垫、差异</span></div>
+            <div class="box flow front"><strong>开票申请</strong><span>抬头、税率、编码校验</span></div>
+            <div class="box flow integration"><strong>链票开具</strong><span>蓝字、红冲、版式</span></div>
+            <div class="box flow domain"><strong>应收与回款</strong><span>台账、认领、核销</span></div>
+            <div class="box flow domain"><strong>成本应付</strong><span>供应商对账、暂估</span></div>
+            <div class="box flow domain"><strong>税务归档</strong><span>抵扣、税负、档案</span></div>
+            <div class="box flow risk"><strong>风险分析</strong><span>超期、重复、异常</span></div>
+          </div>
+        </section>
+
+        <section class="layer span-2">
+          <h2>展示层</h2>
+          <small>Next.js 原型前端，后续可迁移到统一业财门户</small>
+          <div class="app-grid">
+            <div class="box front"><strong>经营工作台</strong><span>经营概览、票财待办、异常</span></div>
+            <div class="box front"><strong>发票中心</strong><span>开票、收票、红冲、归档</span></div>
+            <div class="box front"><strong>客户结算</strong><span>结算、未开票、客户对账</span></div>
+            <div class="box front"><strong>供应商结算</strong><span>成本单、供应商对账、暂估</span></div>
+            <div class="box front"><strong>代垫款管理</strong><span>关税、进口增值税、保证金</span></div>
+            <div class="box front"><strong>应收与回款</strong><span>流水、认领、核销、催收</span></div>
+            <div class="box front"><strong>税务合规</strong><span>销项、进项、抵扣、额度</span></div>
+            <div class="box front"><strong>报表中心</strong><span>毛利、账龄、异常、税负</span></div>
+            <div class="box front"><strong>基础配置</strong><span>主体、客户、供应商、规则</span></div>
+          </div>
+        </section>
+
+        <section class="layer span-2">
+          <h2>业务应用层</h2>
+          <small>承接用户操作、流程编排和页面业务状态</small>
+          <div class="app-grid">
+            <div class="box biz"><strong>开票申请中心</strong><span>申请、审核、提交链票</span></div>
+            <div class="box biz"><strong>发票全生命周期</strong><span>采集、查验、抵扣、入账</span></div>
+            <div class="box biz"><strong>客户对账中心</strong><span>服务费、代垫、回款差异</span></div>
+            <div class="box biz"><strong>供应商对账中心</strong><span>运输、仓储、关务成本</span></div>
+            <div class="box biz"><strong>代垫确认中心</strong><span>客户确认、开票、应收</span></div>
+            <div class="box biz"><strong>风险处理中心</strong><span>重复、逾期、额度、接口失败</span></div>
+          </div>
+        </section>
+
+        <section class="layer span-4">
+          <h2>领域服务层</h2>
+          <small>后端化后建议拆分的核心领域服务，当前原型由配置和 mock 数据模拟</small>
+          <div class="service-grid">
+            <div class="box domain"><strong>发票服务</strong><span>发票主档、红冲、作废、交付、归档</span></div>
+            <div class="box domain"><strong>收入服务</strong><span>收入确认、开票匹配、客户对账</span></div>
+            <div class="box domain"><strong>成本服务</strong><span>成本确认、暂估、分摊、供应商对账</span></div>
+            <div class="box domain"><strong>代垫服务</strong><span>税费代垫、客户确认、代垫回款</span></div>
+            <div class="box domain"><strong>应收服务</strong><span>应收台账、收款认领、销账、坏账</span></div>
+            <div class="box domain"><strong>税务服务</strong><span>进销项、抵扣、税负、数电票额度</span></div>
+            <div class="box domain"><strong>规则服务</strong><span>开票、审批、匹配、核销、风险规则</span></div>
+            <div class="box risk"><strong>审计风控服务</strong><span>操作日志、接口日志、风险事件</span></div>
+          </div>
+        </section>
+
+        <section class="layer span-2">
+          <h2>集成适配层</h2>
+          <small>通过适配器封装外部系统差异，保证业务层稳定</small>
+          <div class="service-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+            <div class="box integration"><strong>链票适配器</strong><span>开票、红冲、状态、版式、票源</span></div>
+            <div class="box integration"><strong>财务系统适配器</strong><span>凭证、科目、应收应付、总账</span></div>
+            <div class="box integration"><strong>业务系统适配器</strong><span>委托单、报关单、运单、仓单</span></div>
+            <div class="box integration"><strong>银行适配器</strong><span>银行流水、回款认领、对账</span></div>
+            <div class="box integration"><strong>档案适配器</strong><span>OFD、PDF、XML、影像归档</span></div>
+            <div class="box integration"><strong>消息适配器</strong><span>待办、邮件、企业微信、催收提醒</span></div>
+          </div>
+        </section>
+
+        <section class="layer span-2">
+          <h2>外部系统</h2>
+          <small>真实落地阶段需要接入的系统边界</small>
+          <div class="external-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+            <div class="box integration"><strong>链票平台</strong><span>数电票、红冲、票源、版式</span></div>
+            <div class="box integration"><strong>关务系统</strong><span>报关单、税单、查验、放行</span></div>
+            <div class="box integration"><strong>TMS/WMS</strong><span>运输、仓储、签收、库龄</span></div>
+            <div class="box integration"><strong>ERP/财务系统</strong><span>总账、凭证、应收应付</span></div>
+            <div class="box integration"><strong>银行/银企直连</strong><span>流水、余额、回单</span></div>
+            <div class="box integration"><strong>电子档案</strong><span>会计档案、影像、借阅</span></div>
+          </div>
+        </section>
+
+        <section class="layer span-4">
+          <h2>数据层</h2>
+          <small>后端化后建议建设统一数据模型，支持追溯、分析和风控</small>
+          <div class="data-grid">
+            <div class="box data"><strong>业务单据库</strong><span>业务委托、报关单、运单、仓单、结算单</span></div>
+            <div class="box data"><strong>票据税务库</strong><span>发票主档、红冲、查验、抵扣、归档</span></div>
+            <div class="box data"><strong>业财台账库</strong><span>收入、成本、代垫、应收、应付、销账</span></div>
+            <div class="box data"><strong>规则配置库</strong><span>客户、供应商、商品编码、审批、匹配规则</span></div>
+            <div class="box data"><strong>接口日志库</strong><span>链票、银行、财务、关务、档案接口日志</span></div>
+            <div class="box data"><strong>风险事件库</strong><span>重复、超期、额度、税率、接口异常</span></div>
+            <div class="box data"><strong>报表数据集市</strong><span>毛利、账龄、税负、抵扣、代垫超期</span></div>
+            <div class="box data"><strong>审计日志库</strong><span>用户、动作、前后值、时间、来源 IP</span></div>
+          </div>
+        </section>
+      </section>
+
+      <section class="note">
+        <strong>落地建议：</strong>
+        原型阶段由 Next.js 页面配置和 mock 数据承载全部展示。真实系统阶段建议保留当前信息架构，将页面数据替换为 API；后端按发票、客户结算、供应商结算、代垫、应收、税务、规则、集成、风控拆分领域服务；链票作为外部税务能力，通过适配层隔离接口差异。
+      </section>
+    </main>
+  </body>
+</html>

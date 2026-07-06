@@ -19,10 +19,13 @@ import {
   X
 } from "lucide-react";
 import {
+  applyBusinessAction,
   dashboardMetrics,
   dashboardTasks,
   getActiveGroup,
   getDetailActions,
+  getRowDetailSections,
+  getRowIdentity,
   getSearchActions,
   getToolbarActions,
   navGroups,
@@ -49,22 +52,20 @@ export function ModulePage({ pageId }: { pageId: PageId }) {
     setDrawerOpen(true);
   }
 
-  function runAction(action: string) {
-    const message = buildActionMessage(action, config);
-    setEventLog((current) => [message, ...current].slice(0, 8));
-    if (action.includes("红冲")) {
-      setRows((current) =>
-        current.map((row, index) => (index === 0 ? { ...row, "发票状态": "部分红冲", "链票状态": "处理中" } : row))
-      );
-    }
-    if (action.includes("销账") || action.includes("核销")) {
-      setRows((current) =>
-        current.map((row, index) => (index === 0 ? { ...row, "销账状态": "部分销账", "认领状态": "已匹配" } : row))
-      );
-    }
-    if (action.includes("作废")) {
-      setEventLog((current) => ["作废校验：数电票已开具，系统建议转红冲流程", ...current].slice(0, 8));
-    }
+  function runAction(action: string, targetRow?: RowRecord | null) {
+    const target = targetRow ?? selectedRow ?? rows[0];
+    if (!target) return;
+
+    const result = applyBusinessAction(config, target, action);
+    const targetIdentity = getRowIdentity(target);
+
+    setRows((current) =>
+      current.map((row) => (getRowIdentity(row) === targetIdentity ? result.row : row))
+    );
+    setSelectedRow((current) =>
+      current && getRowIdentity(current) === targetIdentity ? result.row : current
+    );
+    setEventLog((current) => [result.event, ...result.followUpEvents, ...current].slice(0, 8));
   }
 
   return (
@@ -75,7 +76,7 @@ export function ModulePage({ pageId }: { pageId: PageId }) {
         <main className="content">
           <PageHeader config={config} />
           {pageId === "dashboard" ? (
-            <Dashboard eventLog={eventLog} />
+            <Dashboard eventLog={eventLog} cases={config.rows} />
           ) : (
             <ListWorkspace
               config={config}
@@ -185,7 +186,7 @@ function PageHeader({ config }: { config: PageConfig }) {
   );
 }
 
-function Dashboard({ eventLog }: { eventLog: string[] }) {
+function Dashboard({ eventLog, cases }: { eventLog: string[]; cases: RowRecord[] }) {
   return (
     <div className="dashboard-grid">
       <section className="metric-grid">
@@ -200,11 +201,43 @@ function Dashboard({ eventLog }: { eventLog: string[] }) {
       <section className="panel large-panel">
         <PanelTitle title="端到端业务闭环" subtitle="收入、成本、代垫、应收、链票、档案" />
         <div className="process-line">
-          {["账单/业务单", "开票申请", "链票开具", "发票台账", "应收回款", "归档报表"].map((step, index) => (
+          {["账单/业务单", "开票申请", "链票开具", "发票台账", "应收与回款", "归档报表"].map((step, index) => (
             <div className="process-node" key={step}>
               <span>{index + 1}</span>
               <strong>{step}</strong>
             </div>
+          ))}
+        </div>
+      </section>
+      <section className="panel large-panel">
+        <PanelTitle title="真实业务案例" subtitle="半导体供应链全链路样例" />
+        <div className="case-list">
+          {cases.map((item) => (
+            <article className="case-item" key={String(item["业务编号"] ?? item["案例"])}>
+              <header>
+                <div>
+                  <strong>{String(item["案例"] ?? "-")}</strong>
+                  <span>{String(item["业务编号"] ?? "-")}</span>
+                </div>
+                <StatusBadge value={String(item["状态"] ?? "-")} />
+              </header>
+              <div className="case-meta">
+                {["客户", "服务类型", "关键单据"].map((field) => (
+                  <div key={field}>
+                    <span>{field}</span>
+                    <strong>{String(item[field] ?? "-")}</strong>
+                  </div>
+                ))}
+              </div>
+              <div className="case-money">
+                {["收入", "成本", "代垫", "应收"].map((field) => (
+                  <div key={field}>
+                    <span>{field}</span>
+                    <strong>{String(item[field] ?? "-")}</strong>
+                  </div>
+                ))}
+              </div>
+            </article>
           ))}
         </div>
       </section>
@@ -352,11 +385,12 @@ function DetailDrawer({
   row: RowRecord | null;
   eventLog: string[];
   onClose: () => void;
-  onRunAction: (action: string) => void;
+  onRunAction: (action: string, row?: RowRecord | null) => void;
 }) {
   if (!open || !row) return null;
   const rowEntries = Object.entries(row).slice(0, 10);
   const detailActions = getDetailActions(config);
+  const detailSections = getRowDetailSections(config, row);
   return (
     <aside className="drawer" aria-label="详情抽屉">
       <div className="drawer-header">
@@ -374,7 +408,7 @@ function DetailDrawer({
             className={getDetailActionClass(action, index)}
             key={action}
             type="button"
-            onClick={() => onRunAction(action)}
+            onClick={() => onRunAction(action, row)}
           >
             {getActionIcon(action)}
             {action}
@@ -392,7 +426,7 @@ function DetailDrawer({
           ))}
         </div>
       </section>
-      {config.detailSections.map((section) => (
+      {detailSections.map((section) => (
         <section className="drawer-section" key={section.title}>
           <h3>{section.title}</h3>
           <div className="detail-grid">
@@ -476,19 +510,4 @@ function getPlaceholder(label: string) {
   if (label.includes("金额")) return "请输入金额";
   if (label.includes("状态") || label.includes("票种") || label.includes("区域")) return "请选择";
   return "请输入关键字";
-}
-
-function buildActionMessage(action: string, config: PageConfig) {
-  if (action.includes("链票")) return `${config.title}：已向链票适配层提交任务，等待回调`;
-  if (action.includes("红冲")) return `${config.title}：已生成红冲申请并保留原票关系`;
-  if (action.includes("作废")) return `${config.title}：已执行作废条件校验`;
-  if (action.includes("交付")) return `${config.title}：已生成交付任务并等待渠道回执`;
-  if (action.includes("查验")) return `${config.title}：已提交发票查验任务`;
-  if (action.includes("认证")) return `${config.title}：已进入进项认证勾选流程`;
-  if (action.includes("归档")) return `${config.title}：已校验版式文件并更新归档状态`;
-  if (action.includes("巡检")) return `${config.title}：已生成风险巡检批次`;
-  if (action.includes("票源") || action.includes("清卡") || action.includes("额度")) return `${config.title}：已同步税控票源与额度状态`;
-  if (action.includes("销账")) return `${config.title}：银行流水已进入应收核销队列`;
-  if (action.includes("坏账")) return `${config.title}：已生成坏账审批记录`;
-  return `${config.title}：执行 ${action}`;
 }

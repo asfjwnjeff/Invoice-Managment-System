@@ -22,7 +22,7 @@
 html,
 body {
   margin: 0;
-  min-width: 1280px;
+  min-width: 0;
   min-height: 100vh;
   color: var(--text);
   background: var(--bg);
@@ -48,6 +48,7 @@ a {
 
 .system-shell {
   min-height: 100vh;
+  min-width: 0;
   display: grid;
   grid-template-rows: 50px 1fr;
 }
@@ -56,6 +57,7 @@ a {
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr) auto;
   align-items: center;
+  min-width: 0;
   background: var(--top);
   color: #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
@@ -155,6 +157,7 @@ a {
 .workspace {
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr);
+  min-width: 0;
   min-height: calc(100vh - 50px);
 }
 
@@ -226,6 +229,7 @@ a {
 
 .content {
   padding: 14px 16px 28px;
+  min-width: 0;
   overflow: auto;
 }
 
@@ -287,6 +291,8 @@ a {
 .panel,
 .search-panel,
 .table-panel {
+  min-width: 0;
+  max-width: 100%;
   background: var(--panel);
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
@@ -373,6 +379,73 @@ a {
   font-weight: 700;
 }
 
+.case-list {
+  display: grid;
+  gap: 10px;
+}
+
+.case-item {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: #fbfcfe;
+}
+
+.case-item header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.case-item header div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.case-item header strong,
+.case-item header span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.case-item header span,
+.case-meta span,
+.case-money span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.case-meta,
+.case-money {
+  display: grid;
+  gap: 10px;
+}
+
+.case-meta {
+  grid-template-columns: 1fr 1fr 1.4fr;
+}
+
+.case-money {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+
+.case-meta div,
+.case-money div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.case-meta strong,
+.case-money strong {
+  overflow-wrap: anywhere;
+}
+
 .task-list,
 .event-log {
   list-style: none;
@@ -418,7 +491,7 @@ a {
 
 .filter-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   gap: 10px 16px;
 }
 
@@ -467,7 +540,7 @@ a {
 }
 
 .filter-grid.compact {
-  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
 }
 
 .search-actions,
