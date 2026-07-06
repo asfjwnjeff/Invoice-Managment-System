@@ -1,0 +1,9 @@
+node_modules/
+.agents/
+dist/
+.next/
+out/
+*.log
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
