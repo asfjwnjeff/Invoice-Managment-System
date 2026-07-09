@@ -1,23 +1,41 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import type { DragEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
+  ArrowUp,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   Download,
   FileMinus2,
   FileText,
+  GripVertical,
   Menu,
   PlugZap,
   RefreshCw,
   Search,
+  Settings2,
   ShieldAlert,
   SlidersHorizontal,
   X
 } from "lucide-react";
+import {
+  buildColumnConfig,
+  getVisibleColumns,
+  getSelectionState,
+  moveColumnToIndex,
+  moveColumnToTop,
+  sortRowsByColumn,
+  toggleAllSelection,
+  toggleColumnVisibility,
+  toggleColumnSort,
+  toggleRowSelection,
+  type ColumnConfig,
+  type SortState
+} from "./listInteractions";
 import {
   applyBusinessAction,
   dashboardMetrics,
@@ -41,6 +59,7 @@ export function ModulePage({ pageId }: { pageId: PageId }) {
   const [rows, setRows] = useState<RowRecord[]>(config.rows);
   const [selectedRow, setSelectedRow] = useState<RowRecord | null>(config.rows[0] ?? null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [actionFeedback, setActionFeedback] = useState("准备就绪");
   const [eventLog, setEventLog] = useState<string[]>([
     "链票状态回调：INV-202607-001 开票成功",
     "银行流水自动匹配：BK20260706002 关联 AR-INV-202607-002",
@@ -51,6 +70,13 @@ export function ModulePage({ pageId }: { pageId: PageId }) {
     setSelectedRow(row);
     setDrawerOpen(true);
   }
+
+  useEffect(() => {
+    setRows(config.rows);
+    setSelectedRow(config.rows[0] ?? null);
+    setDrawerOpen(false);
+    setActionFeedback(`${config.title} 已加载`);
+  }, [config]);
 
   function runAction(action: string, targetRow?: RowRecord | null) {
     const target = targetRow ?? selectedRow ?? rows[0];
@@ -66,6 +92,31 @@ export function ModulePage({ pageId }: { pageId: PageId }) {
       current && getRowIdentity(current) === targetIdentity ? result.row : current
     );
     setEventLog((current) => [result.event, ...result.followUpEvents, ...current].slice(0, 8));
+    setActionFeedback(result.event);
+  }
+
+  function runBulkAction(action: string, targetRows: RowRecord[]) {
+    if (!targetRows.length) return;
+
+    const results = targetRows.map((row) => {
+      const result = applyBusinessAction(config, row, action);
+      return [getRowIdentity(row), result] as const;
+    });
+    const resultById = new Map(results);
+
+    setRows((current) =>
+      current.map((row) => resultById.get(getRowIdentity(row))?.row ?? row)
+    );
+    setSelectedRow((current) =>
+      current ? resultById.get(getRowIdentity(current))?.row ?? current : current
+    );
+    setEventLog((current) =>
+      results
+        .flatMap(([, result]) => [result.event, ...result.followUpEvents])
+        .concat(current)
+        .slice(0, 8)
+    );
+    setActionFeedback(`${config.title}：${action} 已处理 ${targetRows.length} 条记录`);
   }
 
   return (
@@ -74,7 +125,8 @@ export function ModulePage({ pageId }: { pageId: PageId }) {
       <div className="workspace">
         <SideNav pageId={pageId} />
         <main className="content">
-          <PageHeader config={config} />
+          <PageHeader config={config} onAction={runAction} />
+          <div className="action-feedback" role="status">{actionFeedback}</div>
           {pageId === "dashboard" ? (
             <Dashboard eventLog={eventLog} cases={config.rows} />
           ) : (
@@ -82,7 +134,9 @@ export function ModulePage({ pageId }: { pageId: PageId }) {
               config={config}
               rows={rows}
               onOpenDetail={openDetail}
+              onFeedback={setActionFeedback}
               onRunAction={runAction}
+              onRunBulkAction={runBulkAction}
             />
           )}
         </main>
@@ -120,7 +174,7 @@ function TopNav({ activeGroupId }: { activeGroupId: string }) {
               key={group.id}
             >
               <Icon size={16} aria-hidden="true" />
-              <span>{group.short}.{group.label}</span>
+              <span>{group.label}</span>
             </Link>
           );
         })}
@@ -137,6 +191,7 @@ function TopNav({ activeGroupId }: { activeGroupId: string }) {
 
 function SideNav({ pageId }: { pageId: PageId }) {
   const activeGroup = getActiveGroup(pageId);
+  const GroupIcon = activeGroup.icon;
   return (
     <aside className="side-nav">
       <div className="user-panel">
@@ -146,7 +201,10 @@ function SideNav({ pageId }: { pageId: PageId }) {
           <span>财务业务用户</span>
         </div>
       </div>
-      <div className="side-section-title">{activeGroup.short}00.{activeGroup.label}</div>
+      <div className="side-section-title">
+        <GroupIcon size={16} aria-hidden="true" />
+        <span>{activeGroup.label}</span>
+      </div>
       <nav aria-label="二级菜单">
         {activeGroup.items.map((item) => {
           const Icon = item.icon;
@@ -162,7 +220,7 @@ function SideNav({ pageId }: { pageId: PageId }) {
   );
 }
 
-function PageHeader({ config }: { config: PageConfig }) {
+function PageHeader({ config, onAction }: { config: PageConfig; onAction: (action: string) => void }) {
   return (
     <section className="page-header">
       <div>
@@ -175,10 +233,10 @@ function PageHeader({ config }: { config: PageConfig }) {
         <p>{config.description}</p>
       </div>
       <div className="header-tools">
-        <button type="button" title="刷新">
+        <button type="button" title="刷新" onClick={() => onAction("刷新")}>
           <RefreshCw size={16} aria-hidden="true" />
         </button>
-        <button type="button" title="导出">
+        <button type="button" title="导出" onClick={() => onAction("导出")}>
           <Download size={16} aria-hidden="true" />
         </button>
       </div>
@@ -264,19 +322,91 @@ function ListWorkspace({
   config,
   rows,
   onOpenDetail,
-  onRunAction
+  onFeedback,
+  onRunAction,
+  onRunBulkAction
 }: {
   config: PageConfig;
   rows: RowRecord[];
   onOpenDetail: (row: RowRecord) => void;
-  onRunAction: (action: string) => void;
+  onFeedback: (message: string) => void;
+  onRunAction: (action: string, row?: RowRecord | null) => void;
+  onRunBulkAction: (action: string, rows: RowRecord[]) => void;
 }) {
-  const visibleColumns = useMemo(() => config.columns.slice(0, 9), [config.columns]);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [sortState, setSortState] = useState<SortState | null>(null);
+  const [columnPanelOpen, setColumnPanelOpen] = useState(false);
+  const [columnConfig, setColumnConfig] = useState<ColumnConfig>(() => buildColumnConfig(config.columns));
+  const [draftColumnConfig, setDraftColumnConfig] = useState<ColumnConfig>(() => buildColumnConfig(config.columns));
+  const [draggedColumnIndex, setDraggedColumnIndex] = useState<number | null>(null);
   const baseFilters = config.filters.slice(0, 4);
   const advancedFilters = config.filters.slice(4);
   const searchActions = getSearchActions(config);
-  const toolbarActions = getToolbarActions(config);
+  const toolbarActions = getToolbarActions(config).filter((action) => action !== "列设置");
+  const visibleColumns = useMemo(() => getVisibleColumns(columnConfig), [columnConfig]);
+  const sortedRows = useMemo(() => sortRowsByColumn(rows, sortState), [rows, sortState]);
+  const rowKeys = useMemo(() => sortedRows.map(getRowIdentity), [sortedRows]);
+  const selectionState = getSelectionState(rowKeys, selectedKeys);
+  const selectedRows = sortedRows.filter((row) => selectedKeys.has(getRowIdentity(row)));
+
+  useEffect(() => {
+    const nextColumnConfig = buildColumnConfig(config.columns);
+    setColumnConfig(nextColumnConfig);
+    setDraftColumnConfig(nextColumnConfig);
+    setColumnPanelOpen(false);
+    setDraggedColumnIndex(null);
+    setSelectedKeys(new Set());
+    setSortState(null);
+  }, [config.id]);
+
+  function runBatchAction(action: string) {
+    onRunBulkAction(action, selectedRows);
+    setSelectedKeys(new Set());
+  }
+
+  function openColumnPanel() {
+    setDraftColumnConfig(columnConfig);
+    setColumnPanelOpen(true);
+  }
+
+  function applyColumnConfig() {
+    setColumnConfig(draftColumnConfig);
+    setColumnPanelOpen(false);
+    setSortState((current) =>
+      current && getVisibleColumns(draftColumnConfig).includes(current.column) ? current : null
+    );
+    onFeedback(`${config.title}：列设置已应用`);
+  }
+
+  function resetColumnConfig() {
+    setDraftColumnConfig(buildColumnConfig(config.columns));
+    setDraggedColumnIndex(null);
+  }
+
+  function moveDraftColumnToTop(columnKey: string) {
+    setDraftColumnConfig((current) => moveColumnToTop(current, columnKey));
+  }
+
+  function handleColumnDragStart(index: number, event: DragEvent<HTMLDivElement>) {
+    setDraggedColumnIndex(index);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(index));
+  }
+
+  function handleColumnDragOver(index: number, event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setDraggedColumnIndex((currentIndex) => {
+      if (currentIndex === null || currentIndex === index) return currentIndex;
+      setDraftColumnConfig((current) => moveColumnToIndex(current, currentIndex, index));
+      return index;
+    });
+  }
+
+  function handleColumnDragEnd() {
+    setDraggedColumnIndex(null);
+  }
+
   return (
     <div className="list-workspace">
       <section className="search-panel">
@@ -336,29 +466,145 @@ function ListWorkspace({
           <div className="toolbar-left">
             {config.primaryAction ? <button className="btn primary" type="button" onClick={() => onRunAction(config.primaryAction!)}>{config.primaryAction}</button> : null}
             {toolbarActions.map((action) => (
-              <button className="btn" key={action} type="button" onClick={() => onRunAction(action)}>
+              <button
+                className="btn"
+                disabled={!selectionState.hasSelection}
+                key={action}
+                type="button"
+                onClick={() => runBatchAction(action)}
+                title={selectionState.hasSelection ? `对已选 ${selectionState.selectedCount} 条执行` : "请先勾选列表记录"}
+              >
                 {action}
               </button>
             ))}
           </div>
-          <span>共 {rows.length} 条 · 50条/页</span>
+          <div className="toolbar-right">
+            <button className="btn" type="button" onClick={openColumnPanel}>
+              <Settings2 size={15} aria-hidden="true" />
+              列设置
+            </button>
+          <span>
+            已选 {selectionState.selectedCount} 条 · 共 {rows.length} 条 · 50条/页
+          </span>
+          </div>
         </div>
+        {columnPanelOpen ? (
+          <div className="column-panel">
+            <div className="column-panel-header">
+              <div>
+                <strong>自定义列表字段</strong>
+                <span>调整显示字段和字段顺序，应用后立即生效</span>
+              </div>
+              <button className="btn ghost" type="button" onClick={() => setColumnPanelOpen(false)}>
+                关闭
+              </button>
+            </div>
+            <div className="column-config-list">
+              {draftColumnConfig.map((column, index) => (
+                <div
+                  className={draggedColumnIndex === index ? "column-config-item dragging" : "column-config-item"}
+                  draggable
+                  key={column.key}
+                  onDragEnd={handleColumnDragEnd}
+                  onDragOver={(event) => handleColumnDragOver(index, event)}
+                  onDragStart={(event) => handleColumnDragStart(index, event)}
+                >
+                  <span className="drag-handle" title="拖拽排序">
+                    <GripVertical size={16} aria-hidden="true" />
+                  </span>
+                  <label>
+                    <input
+                      checked={column.visible}
+                      type="checkbox"
+                      onChange={() => setDraftColumnConfig((current) => toggleColumnVisibility(current, column.key))}
+                    />
+                    <span>{column.key}</span>
+                  </label>
+                  <div className="column-order-actions">
+                    <button
+                      aria-label={`${column.key} 置顶`}
+                      disabled={index === 0}
+                      title="置顶"
+                      type="button"
+                      onClick={() => moveDraftColumnToTop(column.key)}
+                    >
+                      <ArrowUp size={14} aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="column-panel-footer">
+              <button className="btn" type="button" onClick={resetColumnConfig}>
+                恢复默认
+              </button>
+              <button className="btn primary" type="button" onClick={applyColumnConfig}>
+                应用
+              </button>
+            </div>
+          </div>
+        ) : null}
         {rows.length ? (
           <div className="data-table" style={{ ["--col-count" as string]: visibleColumns.length }}>
             <div className="data-row head">
+              <span className="selection-cell">
+                <input
+                  aria-label="选择当前页全部记录"
+                  checked={selectionState.allSelected}
+                  ref={(input) => {
+                    if (input) input.indeterminate = selectionState.partiallySelected;
+                  }}
+                  type="checkbox"
+                  onChange={() => undefined}
+                  onClick={() => setSelectedKeys((current) => toggleAllSelection(rowKeys, current))}
+                />
+              </span>
               {visibleColumns.map((column) => (
-                <span key={column}>{column}</span>
+                <button
+                  className={sortState?.column === column ? "column-sort active" : "column-sort"}
+                  key={column}
+                  type="button"
+                  onClick={() => setSortState((current) => toggleColumnSort(current, column))}
+                >
+                  <span>{column}</span>
+                  <small>{sortState?.column === column ? (sortState.direction === "asc" ? "升序" : "降序") : "排序"}</small>
+                </button>
               ))}
             </div>
-            {rows.map((row, index) => (
-              <button className="data-row" key={`${config.id}-${index}`} type="button" onClick={() => onOpenDetail(row)}>
+            {sortedRows.map((row, index) => {
+              const rowKey = getRowIdentity(row);
+              const selected = selectedKeys.has(rowKey);
+              return (
+              <div
+                className={selected ? "data-row selected" : "data-row"}
+                key={`${config.id}-${rowKey}-${index}`}
+                role="button"
+                tabIndex={0}
+                onClick={() => onOpenDetail(row)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") onOpenDetail(row);
+                }}
+              >
+                <span className="selection-cell">
+                  <input
+                    aria-label={`选择第 ${index + 1} 条记录`}
+                    checked={selected}
+                    type="checkbox"
+                    onChange={() => undefined}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setSelectedKeys((current) => toggleRowSelection(current, rowKey));
+                    }}
+                  />
+                </span>
                 {visibleColumns.map((column) => (
                   <span key={column}>
                     {isStatusColumn(column) ? <StatusBadge value={String(row[column] ?? "-")} /> : String(row[column] ?? "-")}
                   </span>
                 ))}
-              </button>
-            ))}
+              </div>
+              );
+            })}
           </div>
         ) : (
           <div className="empty-state">

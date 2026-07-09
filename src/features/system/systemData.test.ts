@@ -199,6 +199,10 @@ describe("system page configuration", () => {
     ]);
   });
 
+  test("does not expose alphabet codes in top-level navigation data", () => {
+    expect(navGroups.every((group) => !("short" in group))).toBe(true);
+  });
+
   test("covers the mature module gaps from the research baseline", () => {
     const labelsByGroup = Object.fromEntries(
       navGroups.map((group) => [group.id, group.items.map((item) => item.label)])

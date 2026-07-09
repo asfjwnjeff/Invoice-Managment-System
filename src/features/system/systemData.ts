@@ -145,7 +145,6 @@ export interface NavItem {
 export interface NavGroup {
   id: string;
   label: string;
-  short: string;
   icon: LucideIcon;
   items: NavItem[];
 }
@@ -177,7 +176,6 @@ export const navGroups: NavGroup[] = [
   {
     id: "dashboard",
     label: "经营工作台",
-    short: "W",
     icon: Workflow,
     items: [
       { id: "dashboard", label: "经营概览", href: "/dashboard", icon: Workflow },
@@ -189,7 +187,6 @@ export const navGroups: NavGroup[] = [
   {
     id: "invoices",
     label: "发票中心",
-    short: "I",
     icon: FileCog,
     items: [
       { id: "invoices.billingRequests", label: "开票申请", href: "/invoices/billing-requests", icon: FileClock },
@@ -209,7 +206,6 @@ export const navGroups: NavGroup[] = [
   {
     id: "income",
     label: "客户结算",
-    short: "F",
     icon: ReceiptText,
     items: [
       { id: "income.settlements", label: "结算单", href: "/income/settlements", icon: ClipboardList },
@@ -223,7 +219,6 @@ export const navGroups: NavGroup[] = [
   {
     id: "cost",
     label: "供应商结算",
-    short: "C",
     icon: BookOpenCheck,
     items: [
       { id: "cost.confirmation", label: "成本单", href: "/cost/confirmation", icon: ClipboardList },
@@ -240,7 +235,6 @@ export const navGroups: NavGroup[] = [
   {
     id: "advance",
     label: "代垫款管理",
-    short: "D",
     icon: CircleDollarSign,
     items: [
       { id: "advance.register", label: "代垫登记", href: "/advance/register", icon: CircleDollarSign },
@@ -255,7 +249,6 @@ export const navGroups: NavGroup[] = [
   {
     id: "receivables",
     label: "应收与回款",
-    short: "R",
     icon: Landmark,
     items: [
       { id: "receivables.arLedger", label: "应收台账", href: "/receivables/ar-ledger", icon: Landmark },
@@ -273,7 +266,6 @@ export const navGroups: NavGroup[] = [
   {
     id: "tax",
     label: "税务合规",
-    short: "T",
     icon: FileCog,
     items: [
       { id: "tax.workbench", label: "税务工作台", href: "/tax/workbench", icon: Workflow },
@@ -290,7 +282,6 @@ export const navGroups: NavGroup[] = [
   {
     id: "reports",
     label: "报表中心",
-    short: "A",
     icon: BarChart3,
     items: [
       { id: "reports.grossProfit", label: "项目毛利", href: "/reports/gross-profit", icon: BarChart3 },
@@ -311,7 +302,6 @@ export const navGroups: NavGroup[] = [
   {
     id: "settings",
     label: "基础配置",
-    short: "S",
     icon: SlidersHorizontal,
     items: [
       { id: "settings.entities", label: "企业主体/开票抬头", href: "/settings/entities", icon: Building2 },
